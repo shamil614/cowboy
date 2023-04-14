@@ -757,7 +757,7 @@ request(Buffer, State0=#state{ref=Ref, transport=Transport, peer=Peer, sock=Sock
 	end,
 	{Headers, HasBody, BodyLength, TDecodeFun, TDecodeState} = case Headers0 of
  		#{<<"content-length">> := <<"0">>} ->
- 			{false, 0, undefined, undefined};
+ 			{Headers0, false, 0, undefined, undefined};
  		#{<<"content-length">> := BinLength} ->
  			Length = try
  				cow_http_hd:parse_content_length(BinLength)
@@ -766,12 +766,12 @@ request(Buffer, State0=#state{ref=Ref, transport=Transport, peer=Peer, sock=Sock
  					{stream_error, StreamID, protocol_error,
  						'The content-length header is invalid. (RFC7230 3.3.2)'})
  			end,
- 			{true, Length, fun cow_http_te:stream_identity/2, {0, Length}};
+ 			{Headers0, true, Length, fun cow_http_te:stream_identity/2, {0, Length}};
  		%% @todo Better handling of transfer decoding.
  		#{<<"transfer-encoding">> := <<"chunked">>} ->
- 			{true, undefined, fun cow_http_te:stream_chunked/2, {0, 0}};
+ 			{Headers0, true, undefined, fun cow_http_te:stream_chunked/2, {0, 0}};
  		_ ->
- 			{false, 0, undefined, undefined}
+ 			{Headers0, false, 0, undefined, undefined}
  	end,
 	Req0 = #{
 		ref => Ref,
