@@ -755,35 +755,24 @@ request(Buffer, State0=#state{ref=Ref, transport=Transport, peer=Peer, sock=Sock
 		true -> <<"https">>;
 		false -> <<"http">>
 	end,
-	{Headers, HasBody, BodyLength, TDecodeFun, TDecodeState} = case Headers0 of
-		#{<<"transfer-encoding">> := TransferEncoding0} ->
-			try cow_http_hd:parse_transfer_encoding(TransferEncoding0) of
-				[<<"chunked">>] ->
-					{maps:remove(<<"content-length">>, Headers0),
-						true, undefined, fun cow_http_te:stream_chunked/2, {0, 0}};
-				_ ->
-					error_terminate(400, State0#state{in_state=PS#ps_header{headers=Headers0}},
-						{stream_error, protocol_error,
-							'Cowboy only supports transfer-encoding: chunked. (RFC7230 3.3.1)'})
-			catch _:_ ->
-				error_terminate(400, State0#state{in_state=PS#ps_header{headers=Headers0}},
-					{stream_error, protocol_error,
-						'The transfer-encoding header is invalid. (RFC7230 3.3.1)'})
-			end;
-		#{<<"content-length">> := <<"0">>} ->
-			{Headers0, false, 0, undefined, undefined};
-		#{<<"content-length">> := BinLength} ->
-			Length = try
-				cow_http_hd:parse_content_length(BinLength)
-			catch _:_ ->
-				error_terminate(400, State0#state{in_state=PS#ps_header{headers=Headers0}},
-					{stream_error, protocol_error,
-						'The content-length header is invalid. (RFC7230 3.3.2)'})
-			end,
-			{Headers0, true, Length, fun cow_http_te:stream_identity/2, {0, Length}};
-		_ ->
-			{Headers0, false, 0, undefined, undefined}
-	end,
+	{HasBody, BodyLength, TDecodeFun, TDecodeState} = case Headers of
+ 		#{<<"content-length">> := <<"0">>} ->
+ 			{false, 0, undefined, undefined};
+ 		#{<<"content-length">> := BinLength} ->
+ 			Length = try
+ 				cow_http_hd:parse_content_length(BinLength)
+ 			catch _:_ ->
+ 				error_terminate(400, State0#state{in_state=PS#ps_header{headers=Headers}},
+ 					{stream_error, StreamID, protocol_error,
+ 						'The content-length header is invalid. (RFC7230 3.3.2)'})
+ 			end,
+ 			{true, Length, fun cow_http_te:stream_identity/2, {0, Length}};
+ 		%% @todo Better handling of transfer decoding.
+ 		#{<<"transfer-encoding">> := <<"chunked">>} ->
+ 			{true, undefined, fun cow_http_te:stream_chunked/2, {0, 0}};
+ 		_ ->
+ 			{false, 0, undefined, undefined}
+ 	end,
 	Req0 = #{
 		ref => Ref,
 		pid => self(),
