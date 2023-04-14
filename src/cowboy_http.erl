@@ -755,14 +755,14 @@ request(Buffer, State0=#state{ref=Ref, transport=Transport, peer=Peer, sock=Sock
 		true -> <<"https">>;
 		false -> <<"http">>
 	end,
-	{HasBody, BodyLength, TDecodeFun, TDecodeState} = case Headers of
+	{HasBody, BodyLength, TDecodeFun, TDecodeState} = case Headers0 of
  		#{<<"content-length">> := <<"0">>} ->
  			{false, 0, undefined, undefined};
  		#{<<"content-length">> := BinLength} ->
  			Length = try
  				cow_http_hd:parse_content_length(BinLength)
  			catch _:_ ->
- 				error_terminate(400, State0#state{in_state=PS#ps_header{headers=Headers}},
+ 				error_terminate(400, State0#state{in_state=PS#ps_header{headers=Headers0}},
  					{stream_error, StreamID, protocol_error,
  						'The content-length header is invalid. (RFC7230 3.3.2)'})
  			end,
