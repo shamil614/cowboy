@@ -755,7 +755,7 @@ request(Buffer, State0=#state{ref=Ref, transport=Transport, peer=Peer, sock=Sock
 		true -> <<"https">>;
 		false -> <<"http">>
 	end,
-	{HasBody, BodyLength, TDecodeFun, TDecodeState} = case Headers0 of
+	{Headers, HasBody, BodyLength, TDecodeFun, TDecodeState} = case Headers0 of
  		#{<<"content-length">> := <<"0">>} ->
  			{false, 0, undefined, undefined};
  		#{<<"content-length">> := BinLength} ->
